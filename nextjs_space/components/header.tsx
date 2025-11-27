@@ -86,7 +86,11 @@ export function Header({ user, onMenuToggle }: HeaderProps) {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+              <Button 
+                variant="ghost" 
+                className="relative h-10 w-10 rounded-full"
+                aria-label="Menu do usuário"
+              >
                 <Avatar className="h-10 w-10">
                   <AvatarImage src={user?.image ?? ''} alt={user?.name ?? ''} />
                   <AvatarFallback className="bg-blue-100 text-blue-600">

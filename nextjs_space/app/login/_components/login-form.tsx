@@ -52,7 +52,7 @@ export function LoginForm() {
           title: 'Login realizado com sucesso!',
           description: 'Redirecionando...',
         })
-        router.push('/dashboard')
+        router.push('/')
         router.refresh()
       }
     } catch (error) {
@@ -70,7 +70,7 @@ export function LoginForm() {
   const handleGoogleSignIn = async () => {
     try {
       setIsGoogleLoading(true)
-      await signIn('google', { callbackUrl: '/dashboard' })
+      await signIn('google', { callbackUrl: '/' })
     } catch (error) {
       console.error('Erro no Google Sign-In:', error)
       toast({
