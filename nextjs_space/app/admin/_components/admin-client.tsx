@@ -1,11 +1,21 @@
 'use client'
 
 import { useState } from 'react'
-import { Header } from '@/components/header'
-import { Sidebar } from '@/components/sidebar'
+import { useRouter } from 'next/navigation'
+import { signOut } from 'next-auth/react'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Button } from '@/components/ui/button'
+import { Eye, LogOut, User, ArrowLeft } from 'lucide-react'
 import { UsersTable } from './users-table'
 import { CreateUserDialog } from './create-user-dialog'
-import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 
 interface AdminClientProps {
@@ -45,24 +55,116 @@ export function AdminClient({
   roles,
   sectors,
 }: AdminClientProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const router = useRouter()
+  const [isLoading, setIsLoading] = useState(false)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
 
+  const handleSignOut = async () => {
+    try {
+      setIsLoading(true)
+      await signOut({ callbackUrl: '/login' })
+    } catch (error) {
+      console.error('Erro ao fazer logout:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleProfileClick = () => {
+    router.push('/profile')
+  }
+
+  const handleBackClick = () => {
+    router.push('/')
+  }
+
+  const userInitials = currentUser?.name
+    ?.split(' ')
+    ?.map((n) => n?.[0])
+    ?.join('')
+    ?.toUpperCase() ?? 'U'
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header
-        user={currentUser}
-        onMenuToggle={() => setSidebarOpen(!sidebarOpen)}
-      />
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
+      {/* Header Simplificado */}
+      <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+        <div className="container mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
+          {/* Logo e Botão Voltar - Esquerda */}
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleBackClick}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span className="hidden sm:inline">Voltar</span>
+            </Button>
+            <div className="flex items-center gap-2">
+              <Eye className="h-6 w-6 text-blue-600" />
+              <h1 className="text-xl font-bold text-gray-900">
+                <span className="text-blue-600">Sistema</span> Oftalmocasa
+              </h1>
+            </div>
+          </div>
 
-      <div className="flex">
-        <Sidebar
-          userRole={currentUser.role}
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-        />
+          {/* Perfil - Direita */}
+          <div className="flex items-center gap-3">
+            {/* Dropdown de Perfil */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  className="relative h-10 w-10 rounded-full"
+                  aria-label="Menu do usuário"
+                >
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={currentUser?.image ?? ''} alt={currentUser?.name ?? ''} />
+                    <AvatarFallback className="bg-blue-100 text-blue-600">
+                      {userInitials}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56" align="end">
+                <DropdownMenuLabel>
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium">{currentUser?.name ?? 'Usuário'}</p>
+                    <p className="text-xs text-gray-500">{currentUser?.email ?? ''}</p>
+                    {currentUser?.role && (
+                      <p className="text-xs font-medium text-blue-600">{currentUser.role}</p>
+                    )}
+                    {currentUser?.sector && (
+                      <p className="text-xs text-gray-500">Setor: {currentUser.sector}</p>
+                    )}
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleBackClick}>
+                  <User className="mr-2 h-4 w-4" />
+                  Início
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleProfileClick}>
+                  <User className="mr-2 h-4 w-4" />
+                  Meu Perfil
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleSignOut}
+                  disabled={isLoading}
+                  className="text-red-600 focus:text-red-600"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  {isLoading ? 'Saindo...' : 'Sair'}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </header>
 
-        <main className="flex-1 p-6 lg:p-8">
+      {/* Main Content */}
+      <main className="container mx-auto max-w-7xl px-4 py-8">
           <div className="mx-auto max-w-7xl space-y-8">
             {/* Header */}
             <div className="flex items-center justify-between">
@@ -126,6 +228,5 @@ export function AdminClient({
           </div>
         </main>
       </div>
-    </div>
   )
 }

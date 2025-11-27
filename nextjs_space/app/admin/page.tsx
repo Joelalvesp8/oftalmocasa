@@ -16,7 +16,7 @@ export default async function AdminPage() {
 
   const userRole = user.role ?? ''
   if (!isAdmin(userRole)) {
-    redirect('/dashboard')
+    redirect('/')
   }
 
   // Buscar todos os usuários
