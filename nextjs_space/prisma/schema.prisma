@@ -114,3 +114,250 @@ model Permission {
   @@index([userId])
   @@index([toolName])
 }
+
+// ============================================
+// Sistema de Repasse Médico
+// ============================================
+
+model Doctor {
+  id                String            @id @default(cuid())
+  
+  // Dados Pessoais
+  name              String
+  birthDate         DateTime?
+  graduationDate    DateTime?
+  councilType       String            // CRM, CRO, etc
+  councilNumber     String
+  councilState      String?
+  cpf               String            @unique
+  phone             String
+  email             String            @unique
+  
+  // Dados Empresariais
+  companyName       String?           // Razão Social
+  cnpj              String?           @unique
+  taxRegime         TaxRegime?        // LP, SN
+  
+  // Dados Bancários
+  bankNumber        String?           // Coluna Nº
+  bankName          String?           // BANCO
+  bankAgency        String?           // AG
+  bankAccount       String?           // C/C
+  pixKeyType        String?           // TIPO CHAVE
+  pixKey            String?           // CHAVE PIX
+  
+  // Classificação
+  paymentType       PaymentType       @default(VARIABLE) // FIXO/VAR
+  paymentClass      PaymentClass      @default(CLASS_1)
+  monthlyFixedValue Float?            // Para médicos com pagamento fixo
+  
+  // Relacionamentos
+  schedules         DoctorSchedule[]
+  appointments      Appointment[]
+  productions       Production[]
+  paymentReports    PaymentReport[]
+  
+  isActive          Boolean           @default(true)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([cpf])
+  @@index([email])
+  @@index([isActive])
+}
+
+model DoctorSchedule {
+  id              String         @id @default(cuid())
+  doctorId        String
+  doctor          Doctor         @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  
+  scheduleCode    String         // Ex: "GERAL", "ESPECIALISTA", "MAPA"
+  scheduleName    String         // Nome da agenda
+  sector          DoctorSector   // AMBULATORIO, EMERGENCIA, etc
+  
+  // Configurações da agenda
+  patientsPerHour Int            // 4 para geral, 3 para especialista, 6 para mapa
+  hourlyRate      Float          // Valor por hora desta agenda
+  exceedBonus     Float          @default(40) // Bonus por paciente excedente
+  
+  // Dias e horários
+  weekDays        Json           // [1,2,3,4,5] = seg a sex
+  startTime       String         // "08:00"
+  endTime         String         // "12:00"
+  
+  isActive        Boolean        @default(true)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  
+  @@unique([doctorId, scheduleCode])
+  @@index([doctorId])
+  @@index([isActive])
+}
+
+model Production {
+  id              String         @id @default(cuid())
+  doctorId        String
+  doctor          Doctor         @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  
+  date            DateTime
+  scheduleCode    String         // Tipo de agenda
+  scheduleName    String
+  
+  // Dados da produção
+  scheduledHours  Float          // Horas agendadas
+  workedHours     Float          // Horas trabalhadas
+  
+  scheduledPatients Int          // Pacientes agendados
+  attendedPatients  Int          // Pacientes atendidos
+  exceededPatients  Int          // Pacientes excedentes
+  
+  // Cálculos
+  hourlyRate      Float          // Taxa horária
+  baseValue       Float          // Valor base (horas x taxa)
+  exceedValue     Float          // Valor excedente
+  totalValue      Float          // Total
+  
+  status          ProductionStatus @default(PENDING)
+  
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  
+  paymentReport   PaymentReport? @relation(fields: [paymentReportId], references: [id])
+  paymentReportId String?
+  
+  @@unique([doctorId, date, scheduleCode])
+  @@index([doctorId, date])
+  @@index([status])
+}
+
+model PaymentReport {
+  id              String         @id @default(cuid())
+  
+  month           Int            // 1-12
+  year            Int            // 2025
+  
+  doctorId        String
+  doctor          Doctor         @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  
+  // Dados do pagamento
+  taxRegime       String         // LP/SN
+  bankNumber      String?        // Nº
+  bankName        String?        // BANCO
+  bankAgency      String?        // AG
+  bankAccount     String?        // C/C
+  pixKeyType      String?        // TIPO CHAVE
+  pixKey          String?        // CHAVE PIX
+  paymentType     String         // FIXO/VAR
+  
+  // Valores
+  totalHours      Float
+  totalPatients   Int
+  exceededPatients Int
+  
+  baseValue       Float          // VALOR_BRUTO base
+  exceedValue     Float          // Valor excedente
+  grossValue      Float          // VALOR_BRUTO total
+  
+  // Status
+  status          ReportStatus   @default(DRAFT)
+  approvedBy      String?
+  approvedAt      DateTime?
+  paidAt          DateTime?
+  
+  // Produções relacionadas
+  productions     Production[]
+  
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  
+  @@unique([doctorId, month, year])
+  @@index([month, year])
+  @@index([status])
+}
+
+model Appointment {
+  id              String         @id @default(cuid())
+  
+  doctorId        String
+  doctor          Doctor         @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  
+  scheduleCode    String
+  date            DateTime
+  time            String         // "08:00"
+  
+  // Paciente
+  patientName     String
+  patientPhone    String?
+  patientEmail    String?
+  healthPlan      String?        // Plano de saúde
+  
+  status          AppointmentStatus @default(SCHEDULED)
+  
+  // Controle
+  arrivedAt       DateTime?
+  attendedAt      DateTime?
+  completedAt     DateTime?
+  
+  notes           String?
+  
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  
+  @@index([doctorId, date])
+  @@index([status])
+  @@index([date])
+}
+
+// ============================================
+// Enums
+// ============================================
+
+enum PaymentType {
+  FIXED     // Pagamento fixo
+  VARIABLE  // Pagamento variável por hora
+}
+
+enum PaymentClass {
+  CLASS_1   // R$ 125/h
+  CLASS_2   // R$ 160/h
+  CLASS_3   // R$ 200/h
+  CLASS_4   // R$ 500 fixo
+  CLASS_5   // R$ 125/h (apenas MAPA)
+}
+
+enum TaxRegime {
+  LP  // Lucro Presumido
+  SN  // Simples Nacional
+}
+
+enum DoctorSector {
+  AMBULATORIO
+  EMERGENCIA
+  CENTRO_CIRURGICO
+}
+
+enum ProductionStatus {
+  PENDING
+  REVIEWED
+  APPROVED
+  PAID
+}
+
+enum ReportStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  PROCESSING
+  PAID
+  CANCELLED
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  WAITING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
