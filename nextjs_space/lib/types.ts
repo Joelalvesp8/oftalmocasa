@@ -77,6 +77,15 @@ export const AVAILABLE_TOOLS: Tool[] = [
     requiredRoles: ['Diretoria', 'Diretoria Médica', 'Administrador', 'Recepcionista', 'Médico'],
   },
   {
+    id: 'doctor-profile',
+    name: 'Meu Perfil Médico',
+    description: 'Gerenciar meus dados e documentos',
+    icon: 'UserCircle',
+    href: '/doctors/profile',
+    status: 'active',
+    requiredRoles: ['Médico'],
+  },
+  {
     id: 'reports',
     name: 'Relatórios',
     description: 'Relatórios detalhados e análises',

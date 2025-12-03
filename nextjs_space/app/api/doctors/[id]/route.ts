@@ -52,6 +52,46 @@ export async function PATCH(
     }
 
     const data = await request.json()
+    
+    // Verificar se é admin
+    const isAdmin = session.user && 'role' in session.user && 
+      ['Diretoria', 'Diretoria Médica', 'Administrador'].includes((session.user as any).role)
+    
+    // Verificar se é o próprio médico
+    const existingDoctor = await prisma.doctor.findUnique({
+      where: { id: params.id },
+    })
+    
+    if (!existingDoctor) {
+      return NextResponse.json({ error: 'Médico não encontrado' }, { status: 404 })
+    }
+    
+    const userId = session.user && 'id' in session.user ? (session.user as any).id : null
+    const isOwnDoctor = existingDoctor.userId === userId
+    
+    // Se não é admin nem o próprio médico, nega acesso
+    if (!isAdmin && !isOwnDoctor) {
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
+    }
+    
+    // Campos que APENAS ADMINS podem editar (dados internos)
+    const adminOnlyFields = [
+      'paymentType',
+      'paymentClass',
+      'monthlyFixedValue',
+      'status',
+      'approvedAt',
+      'approvedBy',
+      'rejectedReason',
+      'isActive'
+    ]
+    
+    // Se não é admin, remove campos restritos dos dados
+    if (!isAdmin) {
+      adminOnlyFields.forEach(field => {
+        delete data[field]
+      })
+    }
 
     const doctor = await prisma.doctor.update({
       where: { id: params.id },

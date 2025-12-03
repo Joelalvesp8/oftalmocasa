@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/hooks/use-toast'
 import { Mail, Lock, Loader2 } from 'lucide-react'
+import Link from 'next/link'
 
 export function LoginForm() {
   const router = useRouter()
@@ -83,6 +84,7 @@ export function LoginForm() {
   }
 
   return (
+    <>
     <Card className="shadow-xl">
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl font-bold">Entrar</CardTitle>
@@ -195,5 +197,19 @@ export function LoginForm() {
         </Button>
       </CardContent>
     </Card>
+
+    {/* Link para Cadastro Médico */}
+    <div className="mt-6 text-center">
+      <p className="text-sm text-muted-foreground">
+        É médico e ainda não tem cadastro?{' '}
+        <Link
+          href="/doctors/register"
+          className="font-medium text-primary hover:underline"
+        >
+          Cadastre-se aqui
+        </Link>
+      </p>
+    </div>
+    </>
   )
 }

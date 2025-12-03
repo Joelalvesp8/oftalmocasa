@@ -75,6 +75,7 @@ model User {
   accounts    Account[]
   sessions    Session[]
   permissions Permission[]
+  doctor      Doctor?   // Relação com cadastro médico (se for médico)
 
   @@index([email])
   @@index([role])
@@ -146,16 +147,27 @@ model Doctor {
   pixKeyType        String?           // TIPO CHAVE
   pixKey            String?           // CHAVE PIX
   
-  // Classificação
+  // Classificação (INTERNO - não visível para o médico)
   paymentType       PaymentType       @default(VARIABLE) // FIXO/VAR
   paymentClass      PaymentClass      @default(CLASS_1)
   monthlyFixedValue Float?            // Para médicos com pagamento fixo
+  
+  // Status de Aprovação
+  status            DoctorStatus      @default(PENDING)
+  approvedAt        DateTime?
+  approvedBy        String?           // ID do admin que aprovou
+  rejectedReason    String?
+  
+  // Relacionado a User (quando médico cria conta)
+  userId            String?           @unique
+  user              User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
   
   // Relacionamentos
   schedules         DoctorSchedule[]
   appointments      Appointment[]
   productions       Production[]
   paymentReports    PaymentReport[]
+  documents         DoctorDocument[]
   
   isActive          Boolean           @default(true)
   createdAt         DateTime          @default(now())
@@ -164,6 +176,8 @@ model Doctor {
   @@index([cpf])
   @@index([email])
   @@index([isActive])
+  @@index([status])
+  @@index([userId])
 }
 
 model DoctorSchedule {
@@ -308,6 +322,32 @@ model Appointment {
   @@index([date])
 }
 
+model DoctorDocument {
+  id                String         @id @default(cuid())
+  doctorId          String
+  doctor            Doctor         @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  
+  // Informações do documento
+  name              String         // Nome do arquivo
+  description       String?        // Descrição do documento
+  type              String         // Tipo: "RG", "CPF", "DIPLOMA", "CRM", "CONTRATO", "OUTROS"
+  
+  // Armazenamento em S3
+  cloudStoragePath  String         // Caminho no S3
+  isPublic          Boolean        @default(false) // Documentos médicos são privados
+  fileSize          Int?           // Tamanho do arquivo em bytes
+  mimeType          String?        // Tipo MIME do arquivo
+  
+  // Controle
+  uploadedBy        String?        // ID do usuário que fez upload (null se foi o próprio médico)
+  
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  
+  @@index([doctorId])
+  @@index([type])
+}
+
 // ============================================
 // Enums
 // ============================================
@@ -360,4 +400,11 @@ enum AppointmentStatus {
   COMPLETED
   CANCELLED
   NO_SHOW
+}
+
+enum DoctorStatus {
+  PENDING           // Aguardando aprovação
+  APPROVED          // Aprovado
+  REJECTED          // Rejeitado
+  INCOMPLETE        // Documentação incompleta
 }
