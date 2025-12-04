@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, CheckCircle2 } from 'lucide-react';
+import { Loader2, CheckCircle2, Search } from 'lucide-react';
 
 interface FormData {
   // Dados Pessoais
@@ -47,6 +47,7 @@ export function RegisterForm() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [step, setStep] = useState(1);
+  const [searchingCnpj, setSearchingCnpj] = useState(false);
   
   const [formData, setFormData] = useState<FormData>({
     name: '',
@@ -102,6 +103,62 @@ export function RegisterForm() {
 
   const handleBack = () => {
     setStep(step - 1);
+  };
+
+  const handleSearchCnpj = async () => {
+    if (!formData.cnpj) {
+      toast.error('Digite um CNPJ para buscar');
+      return;
+    }
+
+    setSearchingCnpj(true);
+
+    try {
+      const cnpjClean = formData.cnpj.replace(/\D/g, '');
+      
+      if (cnpjClean.length !== 14) {
+        toast.error('CNPJ inválido. Digite 14 dígitos.');
+        return;
+      }
+
+      const response = await fetch(`/api/cnpj?cnpj=${cnpjClean}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Erro ao consultar CNPJ');
+      }
+
+      // Preenche os campos automaticamente
+      setFormData((prev) => ({
+        ...prev,
+        companyName: data.companyName || prev.companyName,
+        taxRegime: mapTaxRegimeToForm(data.taxRegime) || prev.taxRegime,
+      }));
+
+      toast.success('Dados do CNPJ carregados com sucesso!');
+      
+      // Mostra informações adicionais em um toast informativo
+      if (data.fantasyName) {
+        toast.info(`Nome Fantasia: ${data.fantasyName}`);
+      }
+      if (data.status) {
+        toast.info(`Status: ${data.status}`);
+      }
+      if (data.mainActivity) {
+        toast.info(`Atividade Principal: ${data.mainActivity}`);
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Erro ao buscar CNPJ');
+    } finally {
+      setSearchingCnpj(false);
+    }
+  };
+
+  const mapTaxRegimeToForm = (regime: string | null): string => {
+    if (regime === 'SIMPLES_NACIONAL' || regime === 'MEI') return 'SN';
+    if (regime === 'LUCRO_PRESUMIDO') return 'LP';
+    if (regime === 'LUCRO_REAL') return 'LR';
+    return 'SN'; // padrão
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -324,6 +381,35 @@ export function RegisterForm() {
           <h3 className="text-lg font-semibold">Dados Empresariais</h3>
           
           <div>
+            <Label htmlFor="cnpj">CNPJ</Label>
+            <div className="flex gap-2">
+              <Input
+                id="cnpj"
+                value={formData.cnpj}
+                onChange={(e) => handleChange('cnpj', e.target.value)}
+                placeholder="00.000.000/0000-00"
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleSearchCnpj}
+                disabled={searchingCnpj || !formData.cnpj}
+              >
+                {searchingCnpj ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Search className="h-4 w-4" />
+                )}
+                <span className="ml-2">Buscar</span>
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Digite o CNPJ e clique em Buscar para preencher automaticamente os dados
+            </p>
+          </div>
+
+          <div>
             <Label htmlFor="companyName">Razão Social</Label>
             <Input
               id="companyName"
@@ -332,29 +418,18 @@ export function RegisterForm() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="cnpj">CNPJ</Label>
-              <Input
-                id="cnpj"
-                value={formData.cnpj}
-                onChange={(e) => handleChange('cnpj', e.target.value)}
-                placeholder="00.000.000/0000-00"
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="taxRegime">Regime Tributário</Label>
-              <Select value={formData.taxRegime} onValueChange={(v) => handleChange('taxRegime', v)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="SN">Simples Nacional</SelectItem>
-                  <SelectItem value="LP">Lucro Presumido</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div>
+            <Label htmlFor="taxRegime">Regime Tributário</Label>
+            <Select value={formData.taxRegime} onValueChange={(v) => handleChange('taxRegime', v)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="SN">Simples Nacional</SelectItem>
+                <SelectItem value="LP">Lucro Presumido</SelectItem>
+                <SelectItem value="LR">Lucro Real</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="flex justify-between">

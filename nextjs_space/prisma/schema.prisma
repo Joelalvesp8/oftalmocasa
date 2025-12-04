@@ -368,6 +368,7 @@ enum PaymentClass {
 enum TaxRegime {
   LP  // Lucro Presumido
   SN  // Simples Nacional
+  LR  // Lucro Real
 }
 
 enum DoctorSector {
