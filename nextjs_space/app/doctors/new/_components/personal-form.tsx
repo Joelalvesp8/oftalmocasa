@@ -25,10 +25,12 @@ export default function DoctorPersonalForm({ data, onChange }: PersonalFormProps
   const mapTaxRegimeToForm = (regime: string | null): TaxRegime => {
     if (!regime) return 'LP' as TaxRegime
     
-    if (regime.toUpperCase().includes('SIMPLES')) return 'SN' as TaxRegime
-    if (regime.toUpperCase().includes('MEI')) return 'SN' as TaxRegime
-    if (regime.toUpperCase().includes('LUCRO REAL')) return 'LR' as TaxRegime
-    if (regime.toUpperCase().includes('LUCRO PRESUMIDO')) return 'LP' as TaxRegime
+    const regimeUpper = regime.toUpperCase().replace(/_/g, ' ')
+    
+    if (regimeUpper.includes('SIMPLES')) return 'SN' as TaxRegime
+    if (regimeUpper.includes('MEI')) return 'SN' as TaxRegime
+    if (regimeUpper.includes('LUCRO REAL')) return 'LR' as TaxRegime
+    if (regimeUpper.includes('LUCRO PRESUMIDO')) return 'LP' as TaxRegime
     
     return 'LP' as TaxRegime
   }
@@ -53,8 +55,13 @@ export default function DoctorPersonalForm({ data, onChange }: PersonalFormProps
       }
 
       // Auto-preenche os campos
+      console.log('Dados recebidos da API:', result)
+      console.log('Mapeando taxRegime:', result.taxRegime, '→', mapTaxRegimeToForm(result.taxRegime))
+      
       handleChange('companyName', result.companyName)
       handleChange('taxRegime', mapTaxRegimeToForm(result.taxRegime))
+      
+      console.log('Campos atualizados com sucesso')
       
       // Mostra informações adicionais
       toast.success('CNPJ encontrado!', {

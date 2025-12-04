@@ -27,15 +27,20 @@ export async function GET(request: NextRequest) {
     }
 
     // Consulta a BrasilAPI
+    console.log(`Buscando CNPJ: ${cnpjClean} na BrasilAPI...`);
     const response = await fetch(
       `https://brasilapi.com.br/api/cnpj/v1/${cnpjClean}`,
       {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         },
+        cache: 'no-store',
       }
     );
+
+    console.log(`Resposta da BrasilAPI: Status ${response.status} ${response.statusText}`);
 
     if (!response.ok) {
       if (response.status === 404) {
@@ -44,7 +49,29 @@ export async function GET(request: NextRequest) {
           { status: 404 }
         );
       }
-      throw new Error(`Erro na consulta: ${response.statusText}`);
+      
+      if (response.status === 403) {
+        return NextResponse.json(
+          { error: 'Acesso negado pela API. Verifique o CNPJ e tente novamente.' },
+          { status: 403 }
+        );
+      }
+      
+      if (response.status === 429) {
+        return NextResponse.json(
+          { error: 'Muitas requisições. Aguarde um momento e tente novamente.' },
+          { status: 429 }
+        );
+      }
+      
+      // Para outros erros, registra e retorna erro genérico
+      const errorText = await response.text().catch(() => 'Resposta inválida');
+      console.error(`Erro na API BrasilAPI (${response.status}):`, errorText);
+      
+      return NextResponse.json(
+        { error: 'Erro ao consultar CNPJ. Verifique os dados e tente novamente.' },
+        { status: response.status }
+      );
     }
 
     const data = await response.json();
