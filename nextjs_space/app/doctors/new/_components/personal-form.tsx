@@ -55,13 +55,14 @@ export default function DoctorPersonalForm({ data, onChange }: PersonalFormProps
       }
 
       // Auto-preenche os campos
-      console.log('Dados recebidos da API:', result)
-      console.log('Mapeando taxRegime:', result.taxRegime, '→', mapTaxRegimeToForm(result.taxRegime))
+      const mappedTaxRegime = mapTaxRegimeToForm(result.taxRegime)
       
-      handleChange('companyName', result.companyName)
-      handleChange('taxRegime', mapTaxRegimeToForm(result.taxRegime))
-      
-      console.log('Campos atualizados com sucesso')
+      // Atualiza todos os campos de uma vez para garantir sincronização
+      onChange({ 
+        ...data, 
+        companyName: result.companyName,
+        taxRegime: mappedTaxRegime
+      })
       
       // Mostra informações adicionais
       toast.success('CNPJ encontrado!', {

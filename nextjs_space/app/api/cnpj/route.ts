@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Marca esta rota como dinâmica para evitar erros de build
+export const dynamic = 'force-dynamic';
+
 /**
  * API para consultar dados de CNPJ usando BrasilAPI
  * Endpoint público: GET /api/cnpj?cnpj={cnpj}
@@ -27,7 +30,6 @@ export async function GET(request: NextRequest) {
     }
 
     // Consulta a BrasilAPI
-    console.log(`Buscando CNPJ: ${cnpjClean} na BrasilAPI...`);
     const response = await fetch(
       `https://brasilapi.com.br/api/cnpj/v1/${cnpjClean}`,
       {
@@ -39,8 +41,6 @@ export async function GET(request: NextRequest) {
         cache: 'no-store',
       }
     );
-
-    console.log(`Resposta da BrasilAPI: Status ${response.status} ${response.statusText}`);
 
     if (!response.ok) {
       if (response.status === 404) {
