@@ -1,9 +1,14 @@
 'use client'
 
+import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
+import { Search } from 'lucide-react'
+import { toast } from 'sonner'
+import { TaxRegime } from '@prisma/client'
 
 interface PersonalFormProps {
   data: any
@@ -11,8 +16,56 @@ interface PersonalFormProps {
 }
 
 export default function DoctorPersonalForm({ data, onChange }: PersonalFormProps) {
+  const [searchingCnpj, setSearchingCnpj] = useState(false)
+
   const handleChange = (field: string, value: any) => {
     onChange({ ...data, [field]: value })
+  }
+
+  const mapTaxRegimeToForm = (regime: string | null): TaxRegime => {
+    if (!regime) return 'LP' as TaxRegime
+    
+    if (regime.toUpperCase().includes('SIMPLES')) return 'SN' as TaxRegime
+    if (regime.toUpperCase().includes('MEI')) return 'SN' as TaxRegime
+    if (regime.toUpperCase().includes('LUCRO REAL')) return 'LR' as TaxRegime
+    if (regime.toUpperCase().includes('LUCRO PRESUMIDO')) return 'LP' as TaxRegime
+    
+    return 'LP' as TaxRegime
+  }
+
+  const handleSearchCnpj = async () => {
+    const cnpj = data.cnpj?.replace(/\D/g, '')
+    
+    if (!cnpj || cnpj.length !== 14) {
+      toast.error('Digite um CNPJ válido com 14 dígitos')
+      return
+    }
+
+    setSearchingCnpj(true)
+    
+    try {
+      const response = await fetch(`/api/cnpj?cnpj=${cnpj}`)
+      const result = await response.json()
+
+      if (!response.ok) {
+        toast.error(result.error || 'Erro ao buscar CNPJ')
+        return
+      }
+
+      // Auto-preenche os campos
+      handleChange('companyName', result.companyName)
+      handleChange('taxRegime', mapTaxRegimeToForm(result.taxRegime))
+      
+      // Mostra informações adicionais
+      toast.success('CNPJ encontrado!', {
+        description: `${result.fantasyName || result.companyName}\nStatus: ${result.status || 'N/A'}\nAtividade: ${result.mainActivity || 'N/A'}`
+      })
+    } catch (error) {
+      console.error('Erro ao buscar CNPJ:', error)
+      toast.error('Erro ao buscar CNPJ. Tente novamente.')
+    } finally {
+      setSearchingCnpj(false)
+    }
   }
 
   return (
@@ -150,26 +203,49 @@ export default function DoctorPersonalForm({ data, onChange }: PersonalFormProps
           <CardDescription>Informações da pessoa jurídica (se aplicável)</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-3 gap-4">
-            <div className="col-span-2 space-y-2">
-              <Label htmlFor="companyName">Razão Social</Label>
-              <Input
-                id="companyName"
-                value={data.companyName || ''}
-                onChange={(e) => handleChange('companyName', e.target.value)}
-                placeholder="Nome da empresa"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="cnpj">CNPJ</Label>
+          <div className="space-y-2">
+            <Label htmlFor="cnpj">CNPJ</Label>
+            <div className="flex gap-2">
               <Input
                 id="cnpj"
                 value={data.cnpj || ''}
                 onChange={(e) => handleChange('cnpj', e.target.value)}
                 placeholder="00.000.000/0000-00"
+                className="flex-1"
               />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleSearchCnpj}
+                disabled={!data.cnpj || searchingCnpj}
+                className="shrink-0"
+              >
+                {searchingCnpj ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" />
+                    Buscando...
+                  </>
+                ) : (
+                  <>
+                    <Search className="h-4 w-4 mr-2" />
+                    Buscar
+                  </>
+                )}
+              </Button>
             </div>
+            <p className="text-sm text-muted-foreground">
+              Digite o CNPJ e clique em Buscar para preencher automaticamente os dados
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="companyName">Razão Social</Label>
+            <Input
+              id="companyName"
+              value={data.companyName || ''}
+              onChange={(e) => handleChange('companyName', e.target.value)}
+              placeholder="Nome da empresa"
+            />
           </div>
 
           <div className="space-y-2">
@@ -184,6 +260,7 @@ export default function DoctorPersonalForm({ data, onChange }: PersonalFormProps
               <SelectContent>
                 <SelectItem value="LP">Lucro Presumido (LP)</SelectItem>
                 <SelectItem value="SN">Simples Nacional (SN)</SelectItem>
+                <SelectItem value="LR">Lucro Real (LR)</SelectItem>
               </SelectContent>
             </Select>
           </div>
