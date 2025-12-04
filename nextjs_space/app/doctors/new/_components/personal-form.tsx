@@ -64,13 +64,20 @@ export default function DoctorPersonalForm({ data, onChange }: PersonalFormProps
         taxRegime: mappedTaxRegime
       })
       
-      // Mostra informações adicionais
-      toast.success('CNPJ encontrado!', {
-        description: `${result.fantasyName || result.companyName}\nStatus: ${result.status || 'N/A'}\nAtividade: ${result.mainActivity || 'N/A'}`
+      // Mostra informações adicionais com dados da empresa
+      const description = [
+        result.fantasyName && `Nome Fantasia: ${result.fantasyName}`,
+        result.status && `Status: ${result.status}`,
+        result.mainActivity && `Atividade: ${result.mainActivity}`
+      ].filter(Boolean).join('\n')
+      
+      toast.success('✅ Dados preenchidos automaticamente!', {
+        description: description || result.companyName,
+        duration: 5000
       })
     } catch (error) {
       console.error('Erro ao buscar CNPJ:', error)
-      toast.error('Erro ao buscar CNPJ. Tente novamente.')
+      toast.error('Erro ao buscar CNPJ. Verifique sua conexão e tente novamente.')
     } finally {
       setSearchingCnpj(false)
     }
