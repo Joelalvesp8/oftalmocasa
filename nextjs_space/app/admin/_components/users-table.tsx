@@ -120,26 +120,30 @@ export function UsersTable({ users, roles, sectors }: UsersTableProps) {
       <div className="space-y-4 rounded-lg border bg-white p-6 shadow-sm">
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" aria-hidden="true" />
           <Input
             placeholder="Buscar usuários por nome, email ou role..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
+            aria-label="Buscar usuários por nome, email ou role"
           />
         </div>
 
         {/* Table */}
         <div className="overflow-x-auto rounded-lg border">
           <Table>
+            <caption className="sr-only">
+              Lista de usuários do sistema com informações de nome, email, role, setor e status
+            </caption>
             <TableHeader>
               <TableRow>
-                <TableHead>Usuário</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Setor</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead scope="col">Usuário</TableHead>
+                <TableHead scope="col">Email</TableHead>
+                <TableHead scope="col">Role</TableHead>
+                <TableHead scope="col">Setor</TableHead>
+                <TableHead scope="col">Status</TableHead>
+                <TableHead scope="col" className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -200,22 +204,30 @@ export function UsersTable({ users, roles, sectors }: UsersTableProps) {
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`Ações para ${user.name}`}
+                            >
+                              <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Ações</DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleEdit(user)}>
-                              <Edit className="mr-2 h-4 w-4" />
+                            <DropdownMenuItem
+                              onClick={() => handleEdit(user)}
+                              aria-label={`Editar usuário ${user.name}`}
+                            >
+                              <Edit className="mr-2 h-4 w-4" aria-hidden="true" />
                               Editar
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => handleDeleteClick(user)}
                               className="text-red-600 focus:text-red-600"
+                              aria-label={`Deletar usuário ${user.name}`}
                             >
-                              <Trash2 className="mr-2 h-4 w-4" />
+                              <Trash2 className="mr-2 h-4 w-4" aria-hidden="true" />
                               Deletar
                             </DropdownMenuItem>
                           </DropdownMenuContent>

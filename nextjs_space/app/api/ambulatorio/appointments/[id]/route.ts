@@ -2,6 +2,21 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
+import { isSessionUser } from '@/lib/types'
+import { z } from 'zod'
+
+const updateAppointmentStatusSchema = z.object({
+  status: z.enum([
+    'SCHEDULED',
+    'CONFIRMED',
+    'WAITING',
+    'IN_PROGRESS',
+    'COMPLETED',
+    'CANCELLED',
+    'NO_SHOW',
+  ]),
+  timestamp: z.string().optional(),
+})
 
 export async function PATCH(
   request: NextRequest,
@@ -9,13 +24,31 @@ export async function PATCH(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session) {
+    if (!session?.user || !isSessionUser(session.user)) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
-    const { status, timestamp } = await request.json()
+    const body = await request.json()
+    const validation = updateAppointmentStatusSchema.safeParse(body)
 
-    const updateData: any = { status }
+    if (!validation.success) {
+      return NextResponse.json(
+        {
+          error: 'Dados inválidos',
+          details: validation.error.flatten().fieldErrors,
+        },
+        { status: 400 }
+      )
+    }
+
+    const { status, timestamp } = validation.data
+
+    const updateData: {
+      status: typeof status
+      arrivedAt?: Date
+      attendedAt?: Date
+      completedAt?: Date
+    } = { status }
 
     // Atualizar timestamps baseado no status
     if (status === 'WAITING') {
