@@ -26,7 +26,7 @@ export default function DoctorBankForm({ data, onChange }: BankFormProps) {
         <CardDescription>Informações para pagamento</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-2">
             <Label htmlFor="bankNumber">Número do Banco</Label>
             <Input
@@ -34,10 +34,12 @@ export default function DoctorBankForm({ data, onChange }: BankFormProps) {
               value={data.bankNumber || ''}
               onChange={(e) => handleChange('bankNumber', e.target.value)}
               placeholder="001"
+              aria-describedby="bankNumber-hint"
             />
+            <span id="bankNumber-hint" className="sr-only">Código de 3 dígitos do banco</span>
           </div>
 
-          <div className="col-span-2 space-y-2">
+          <div className="space-y-2 sm:col-span-2 lg:col-span-2">
             <Label htmlFor="bankName">Nome do Banco</Label>
             <Input
               id="bankName"

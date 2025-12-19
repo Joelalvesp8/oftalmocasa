@@ -163,20 +163,22 @@ export default function ProductionDashboard() {
             </div>
             
             <div className="flex gap-2">
-              <Button 
+              <Button
                 onClick={calculateProduction}
                 disabled={calculating}
+                aria-label="Calcular produção mensal dos médicos"
               >
-                <Calculator className="mr-2 h-4 w-4" />
+                <Calculator className="mr-2 h-4 w-4" aria-hidden="true" />
                 {calculating ? 'Calculando...' : 'Calcular Produção'}
               </Button>
-              
-              <Button 
-                variant="outline" 
+
+              <Button
+                variant="outline"
                 onClick={exportToExcel}
                 disabled={productions.length === 0}
+                aria-label="Exportar relatório para Excel"
               >
-                <FileSpreadsheet className="mr-2 h-4 w-4" />
+                <FileSpreadsheet className="mr-2 h-4 w-4" aria-hidden="true" />
                 Exportar Excel
               </Button>
             </div>
@@ -232,12 +234,15 @@ export default function ProductionDashboard() {
             </div>
           ) : (
             <Table>
+              <caption className="sr-only">
+                Produção médica detalhada por médico para o mês selecionado
+              </caption>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Médico</TableHead>
-                  <TableHead className="text-center">Horas</TableHead>
-                  <TableHead className="text-center">Pacientes</TableHead>
-                  <TableHead className="text-right">Valor Total</TableHead>
+                  <TableHead scope="col">Médico</TableHead>
+                  <TableHead scope="col" className="text-center">Horas</TableHead>
+                  <TableHead scope="col" className="text-center">Pacientes</TableHead>
+                  <TableHead scope="col" className="text-right">Valor Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

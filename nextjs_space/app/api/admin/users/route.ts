@@ -4,7 +4,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth-options'
 import { prisma } from '@/lib/db'
 import bcrypt from 'bcryptjs'
-import { createUserSchema } from '@/lib/validations'
+import { createUserSchema, paginationSchema } from '@/lib/validations'
 import { hasRole, isAdminRole } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
@@ -22,23 +22,57 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
     }
 
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        image: true,
-        role: true,
-        sector: true,
-        isActive: true,
-        createdAt: true,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
+    const { searchParams } = new URL(request.url)
+
+    // Validar paginação
+    const paginationValidation = paginationSchema.safeParse({
+      page: searchParams.get('page'),
+      limit: searchParams.get('limit'),
     })
 
-    return NextResponse.json({ users })
+    if (!paginationValidation.success) {
+      return NextResponse.json(
+        {
+          error: 'Parâmetros de paginação inválidos',
+          details: paginationValidation.error.flatten().fieldErrors,
+        },
+        { status: 400 }
+      )
+    }
+
+    const { page, limit } = paginationValidation.data
+    const skip = (page - 1) * limit
+
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          image: true,
+          role: true,
+          sector: true,
+          isActive: true,
+          createdAt: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: limit,
+        skip,
+      }),
+      prisma.user.count(),
+    ])
+
+    return NextResponse.json({
+      users,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    })
   } catch (error) {
     console.error('Erro ao listar usuários:', error)
     return NextResponse.json(
