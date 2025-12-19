@@ -3,22 +3,30 @@ import { ProductionCalculator } from '@/lib/production-calculator'
 import { prisma } from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
+import { generatePaymentReportSchema } from '@/lib/validations'
+import { isSessionUser, convertDecimalFields } from '@/lib/types'
 
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session) {
+    if (!session?.user || !isSessionUser(session.user)) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
-    const { month, year, doctorId } = await request.json()
+    const body = await request.json()
+    const validation = generatePaymentReportSchema.safeParse(body)
 
-    if (!month || !year) {
+    if (!validation.success) {
       return NextResponse.json(
-        { error: 'Mês e ano são obrigatórios' },
+        {
+          error: 'Dados inválidos',
+          details: validation.error.flatten().fieldErrors,
+        },
         { status: 400 }
       )
     }
+
+    const { month, year, doctorId } = validation.data
 
     // Se não especificar médico, gerar para todos
     const doctors = doctorId 
@@ -52,15 +60,18 @@ export async function POST(request: NextRequest) {
       reports.push(saved)
     }
 
+    // Converter Decimal para number
+    const reportsConverted = reports.map((r) => convertDecimalFields(r))
+
     return NextResponse.json({
       success: true,
-      reports,
+      reports: reportsConverted,
       summary: {
         month,
         year,
-        totalReports: reports.length,
-        totalValue: reports.reduce((sum, r) => sum + r.grossValue, 0)
-      }
+        totalReports: reportsConverted.length,
+        totalValue: reportsConverted.reduce((sum, r) => sum + r.grossValue, 0),
+      },
     })
   } catch (error) {
     console.error('Erro ao gerar relatórios:', error)

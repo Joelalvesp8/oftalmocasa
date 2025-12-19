@@ -6,6 +6,7 @@ import { prisma } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import { updateUserSchema } from '@/lib/validations'
 import { isAdmin } from '@/lib/rbac'
+import { hasRole } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,12 +18,11 @@ export async function PUT(
   try {
     const session = await getServerSession(authOptions)
 
-    if (!session?.user) {
+    if (!session?.user || !hasRole(session.user)) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
-    const userRole = (session.user as any).role ?? ''
-    if (!isAdmin(userRole)) {
+    if (!isAdmin(session.user.role)) {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
     }
 
@@ -33,7 +33,10 @@ export async function PUT(
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: validation.error.errors[0]?.message ?? 'Dados inválidos' },
+        {
+          error: 'Dados inválidos',
+          details: validation.error.flatten().fieldErrors,
+        },
         { status: 400 }
       )
     }
@@ -67,7 +70,14 @@ export async function PUT(
     }
 
     // Prepare update data
-    const updateData: any = {}
+    const updateData: {
+      name?: string
+      email?: string
+      role?: string
+      sector?: string | null
+      isActive?: boolean
+      password?: string
+    } = {}
     if (name) updateData.name = name
     if (email) updateData.email = email
     if (role) updateData.role = role
@@ -113,17 +123,16 @@ export async function DELETE(
   try {
     const session = await getServerSession(authOptions)
 
-    if (!session?.user) {
+    if (!session?.user || !hasRole(session.user)) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
-    const userRole = (session.user as any).role ?? ''
-    if (!isAdmin(userRole)) {
+    if (!isAdmin(session.user.role)) {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
     }
 
     const userId = params.id
-    const currentUserId = (session.user as any).id
+    const currentUserId = session.user.id
 
     // Prevent user from deleting themselves
     if (userId === currentUserId) {

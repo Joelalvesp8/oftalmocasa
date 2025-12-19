@@ -7,10 +7,23 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import bcrypt from 'bcryptjs';
+import { registerDoctorSchema } from '@/lib/validations';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    const validation = registerDoctorSchema.safeParse(body);
+
+    if (!validation.success) {
+      return NextResponse.json(
+        {
+          error: 'Dados inválidos',
+          details: validation.error.flatten().fieldErrors,
+        },
+        { status: 400 }
+      );
+    }
+
     const {
       // Dados Pessoais
       name,
@@ -22,13 +35,13 @@ export async function POST(request: Request) {
       cpf,
       phone,
       email,
-      password, // Senha para criar conta de acesso
-      
+      password,
+
       // Dados Empresariais
       companyName,
       cnpj,
       taxRegime,
-      
+
       // Dados Bancários
       bankNumber,
       bankName,
@@ -36,15 +49,7 @@ export async function POST(request: Request) {
       bankAccount,
       pixKeyType,
       pixKey,
-    } = body;
-
-    // Validações básicas
-    if (!name || !cpf || !email || !phone || !councilType || !councilNumber) {
-      return NextResponse.json(
-        { error: 'Dados obrigatórios não fornecidos' },
-        { status: 400 }
-      );
-    }
+    } = validation.data;
 
     // Verifica se CPF já existe
     const existingDoctorByCpf = await prisma.doctor.findUnique({

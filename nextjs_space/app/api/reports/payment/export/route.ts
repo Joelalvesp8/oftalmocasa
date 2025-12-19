@@ -3,30 +3,45 @@ import ExcelJS from 'exceljs'
 import { prisma } from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
+import { exportPaymentReportSchema } from '@/lib/validations'
+import { isSessionUser } from '@/lib/types'
 
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session) {
+    if (!session?.user || !isSessionUser(session.user)) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)
-    const month = parseInt(searchParams.get('month') || '0')
-    const year = parseInt(searchParams.get('year') || '0')
 
-    if (!month || !year) {
+    const queryValidation = exportPaymentReportSchema.safeParse({
+      month: searchParams.get('month'),
+      year: searchParams.get('year'),
+      doctorId: searchParams.get('doctorId'),
+    })
+
+    if (!queryValidation.success) {
       return NextResponse.json(
-        { error: 'Mês e ano são obrigatórios' },
+        {
+          error: 'Parâmetros inválidos',
+          details: queryValidation.error.flatten().fieldErrors,
+        },
         { status: 400 }
       )
     }
 
+    const { month, year, doctorId } = queryValidation.data
+
     // Buscar relatórios de pagamento
     const reports = await prisma.paymentReport.findMany({
-      where: { month, year },
+      where: {
+        month,
+        year,
+        ...(doctorId && { doctorId }),
+      },
       include: { doctor: true },
-      orderBy: { doctor: { name: 'asc' } }
+      orderBy: { doctor: { name: 'asc' } },
     })
 
     // Criar workbook Excel

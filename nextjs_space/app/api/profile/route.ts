@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth-options'
 import { prisma } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import { updateProfileSchema } from '@/lib/validations'
+import { isSessionUser } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,7 +13,7 @@ export async function PUT(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
 
-    if (!session?.user) {
+    if (!session?.user || !isSessionUser(session.user)) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
@@ -21,13 +22,16 @@ export async function PUT(request: NextRequest) {
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: validation.error.errors[0]?.message ?? 'Dados inválidos' },
+        {
+          error: 'Dados inválidos',
+          details: validation.error.flatten().fieldErrors,
+        },
         { status: 400 }
       )
     }
 
-    const { name, currentPassword, newPassword } = validation.data
-    const userId = (session.user as any).id
+    const { name, image, currentPassword, newPassword } = validation.data
+    const userId = session.user.id
 
     // Buscar usuário
     const user = await prisma.user.findUnique({
@@ -39,10 +43,18 @@ export async function PUT(request: NextRequest) {
     }
 
     // Preparar dados para atualização
-    const updateData: any = {}
+    const updateData: {
+      name?: string
+      image?: string | null
+      password?: string
+    } = {}
 
     if (name) {
       updateData.name = name
+    }
+
+    if (image !== undefined) {
+      updateData.image = image
     }
 
     // Se está tentando alterar a senha

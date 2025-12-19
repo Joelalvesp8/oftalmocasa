@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
+import { updateDoctorSchema } from '@/lib/validations'
+import { isSessionUser, hasRole, isAdminRole } from '@/lib/types'
 
 export async function GET(
   request: NextRequest,
@@ -9,7 +11,7 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session) {
+    if (!session?.user || !isSessionUser(session.user)) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
@@ -47,26 +49,38 @@ export async function PATCH(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session) {
+    if (!session?.user || !isSessionUser(session.user)) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
-    const data = await request.json()
-    
+    const body = await request.json()
+    const validation = updateDoctorSchema.safeParse(body)
+
+    if (!validation.success) {
+      return NextResponse.json(
+        {
+          error: 'Dados inválidos',
+          details: validation.error.flatten().fieldErrors,
+        },
+        { status: 400 }
+      )
+    }
+
+    const data = validation.data
+
     // Verificar se é admin
-    const isAdmin = session.user && 'role' in session.user && 
-      ['Diretoria', 'Diretoria Médica', 'Administrador'].includes((session.user as any).role)
-    
+    const isAdmin = hasRole(session.user) && isAdminRole(session.user.role)
+
     // Verificar se é o próprio médico
     const existingDoctor = await prisma.doctor.findUnique({
       where: { id: params.id },
     })
-    
+
     if (!existingDoctor) {
       return NextResponse.json({ error: 'Médico não encontrado' }, { status: 404 })
     }
-    
-    const userId = session.user && 'id' in session.user ? (session.user as any).id : null
+
+    const userId = session.user.id
     const isOwnDoctor = existingDoctor.userId === userId
     
     // Se não é admin nem o próprio médico, nega acesso
@@ -117,7 +131,7 @@ export async function DELETE(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session) {
+    if (!session?.user || !isSessionUser(session.user)) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 

@@ -3,15 +3,37 @@ import { ProductionCalculator } from '@/lib/production-calculator'
 import { prisma } from '@/lib/db'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth-options'
+import { isSessionUser } from '@/lib/types'
+import { z } from 'zod'
+
+const calculateProductionDailySchema = z.object({
+  date: z.string().refine((val) => !isNaN(Date.parse(val)), {
+    message: 'Data inválida',
+  }),
+  doctorId: z.string().uuid('ID do médico inválido').optional(),
+})
 
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session) {
+    if (!session?.user || !isSessionUser(session.user)) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
-    const { date, doctorId } = await request.json()
+    const body = await request.json()
+    const validation = calculateProductionDailySchema.safeParse(body)
+
+    if (!validation.success) {
+      return NextResponse.json(
+        {
+          error: 'Dados inválidos',
+          details: validation.error.flatten().fieldErrors,
+        },
+        { status: 400 }
+      )
+    }
+
+    const { date, doctorId } = validation.data
 
     // Se não especificar médico, calcular para todos
     const doctors = doctorId 

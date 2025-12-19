@@ -132,6 +132,44 @@ export const updateDoctorSchema = z.object({
   payment: doctorPaymentSchema.partial().optional(),
 })
 
+export const approveDoctorSchema = z.object({
+  action: z.enum(['approve', 'reject'], {
+    errorMap: () => ({ message: 'Ação deve ser "approve" ou "reject"' }),
+  }),
+  rejectedReason: z.string().optional(),
+})
+
+export const registerDoctorSchema = z.object({
+  // Dados Pessoais
+  name: z.string().min(3, 'Nome deve ter no mínimo 3 caracteres'),
+  email: z.string().email('Email inválido'),
+  cpf: z.string().regex(/^\d{11}$/, 'CPF deve ter 11 dígitos'),
+  phone: z.string().min(10, 'Telefone deve ter no mínimo 10 dígitos'),
+  birthDate: z.string().optional(),
+  graduationDate: z.string().optional(),
+  councilType: z.enum(['CRM', 'CRO', 'CREFITO', 'CRF'], {
+    errorMap: () => ({ message: 'Tipo de conselho inválido' }),
+  }),
+  councilNumber: z.string().min(4, 'Número do conselho deve ter no mínimo 4 caracteres'),
+  councilState: z.string().length(2, 'Estado deve ter 2 caracteres').optional(),
+  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres').optional(),
+
+  // Dados Empresariais
+  companyName: z.string().optional(),
+  cnpj: z.string().regex(/^\d{14}$/, 'CNPJ deve ter 14 dígitos').optional(),
+  taxRegime: z.enum(['LP', 'SN', 'LR'], {
+    errorMap: () => ({ message: 'Regime tributário inválido' }),
+  }).optional(),
+
+  // Dados Bancários
+  bankNumber: z.string().optional(),
+  bankName: z.string().optional(),
+  bankAgency: z.string().optional(),
+  bankAccount: z.string().optional(),
+  pixKeyType: z.string().optional(),
+  pixKey: z.string().optional(),
+})
+
 // ============================================
 // Appointment Schemas
 // ============================================
@@ -183,6 +221,28 @@ export const createProductionSchema = z.object({
 export const calculateProductionSchema = z.object({
   month: z.number().int().min(1).max(12, 'Mês deve estar entre 1 e 12'),
   year: z.number().int().min(2020).max(2100, 'Ano inválido'),
+})
+
+export const updateProductionSchema = z.object({
+  workedHours: z.number().nonnegative('Horas trabalhadas deve ser não-negativo').optional(),
+  attendedPatients: z.number().int().nonnegative('Pacientes atendidos deve ser não-negativo').optional(),
+  exceededPatients: z.number().int().nonnegative('Pacientes excedentes deve ser não-negativo').optional(),
+})
+
+// ============================================
+// Report Schemas
+// ============================================
+
+export const generatePaymentReportSchema = z.object({
+  month: z.number().int().min(1).max(12, 'Mês deve estar entre 1 e 12'),
+  year: z.number().int().min(2020).max(2100, 'Ano inválido'),
+  doctorId: z.string().uuid('ID do médico inválido').optional(),
+})
+
+export const exportPaymentReportSchema = z.object({
+  month: z.coerce.number().int().min(1).max(12, 'Mês deve estar entre 1 e 12'),
+  year: z.coerce.number().int().min(2020).max(2100, 'Ano inválido'),
+  doctorId: z.string().uuid('ID do médico inválido').optional(),
 })
 
 // ============================================
@@ -244,7 +304,14 @@ export type CreateAppointmentInput = z.infer<typeof createAppointmentSchema>
 export type UpdateAppointmentInput = z.infer<typeof updateAppointmentSchema>
 
 export type CreateProductionInput = z.infer<typeof createProductionSchema>
+export type UpdateProductionInput = z.infer<typeof updateProductionSchema>
 export type CalculateProductionInput = z.infer<typeof calculateProductionSchema>
+
+export type ApproveDoctorInput = z.infer<typeof approveDoctorSchema>
+export type RegisterDoctorInput = z.infer<typeof registerDoctorSchema>
+
+export type GeneratePaymentReportInput = z.infer<typeof generatePaymentReportSchema>
+export type ExportPaymentReportInput = z.infer<typeof exportPaymentReportSchema>
 
 export type PaginationInput = z.infer<typeof paginationSchema>
 export type DoctorQueryInput = z.infer<typeof doctorQuerySchema>

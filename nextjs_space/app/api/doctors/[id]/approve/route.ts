@@ -7,6 +7,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
+import { approveDoctorSchema } from '@/lib/validations';
+import { isSessionUser, hasRole, isAdminRole } from '@/lib/types';
 
 export async function POST(
   request: NextRequest,
@@ -14,25 +16,29 @@ export async function POST(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) {
+    if (!session?.user || !isSessionUser(session.user)) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
     }
 
     // Verifica se é admin
-    const isAdmin = session.user && 'role' in session.user && 
-      ['Diretoria', 'Diretoria Médica', 'Administrador'].includes((session.user as any).role);
-    if (!isAdmin) {
+    if (!hasRole(session.user) || !isAdminRole(session.user.role)) {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
     }
 
-    const { action, rejectedReason } = await request.json();
+    const body = await request.json();
+    const validation = approveDoctorSchema.safeParse(body);
 
-    if (!['approve', 'reject'].includes(action)) {
+    if (!validation.success) {
       return NextResponse.json(
-        { error: 'Ação inválida. Use "approve" ou "reject"' },
+        {
+          error: 'Dados inválidos',
+          details: validation.error.flatten().fieldErrors,
+        },
         { status: 400 }
       );
     }
+
+    const { action, rejectedReason } = validation.data;
 
     const doctor = await prisma.doctor.findUnique({
       where: { id: params.id },
@@ -42,7 +48,7 @@ export async function POST(
       return NextResponse.json({ error: 'Médico não encontrado' }, { status: 404 });
     }
 
-    const userId = session.user && 'id' in session.user ? (session.user as any).id : null;
+    const userId = session.user.id;
 
     // Atualizar status do médico
     const updatedDoctor = await prisma.doctor.update({
