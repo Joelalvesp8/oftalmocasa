@@ -1,5 +1,26 @@
 // Type definitions for the application
-import { User as PrismaUser } from '@prisma/client'
+import {
+  User as PrismaUser,
+  Doctor as PrismaDoctor,
+  DoctorSchedule as PrismaDoctorSchedule,
+  Production as PrismaProduction,
+  Appointment as PrismaAppointment,
+  PaymentReport as PrismaPaymentReport,
+  DoctorDocument as PrismaDoctorDocument,
+  PaymentType,
+  PaymentClass,
+  TaxRegime,
+  DoctorSector,
+  ProductionStatus,
+  AppointmentStatus,
+  DoctorStatus,
+  ReportStatus,
+  Prisma
+} from '@prisma/client'
+
+// ============================================
+// Session & User Types
+// ============================================
 
 export interface SessionUser {
   id: string
@@ -16,6 +37,158 @@ export interface UserWithPermissions extends PrismaUser {
     canAccess: boolean
   }[]
 }
+
+// Type guard for SessionUser
+export function isSessionUser(user: unknown): user is SessionUser {
+  return (
+    typeof user === 'object' &&
+    user !== null &&
+    'id' in user &&
+    typeof (user as SessionUser).id === 'string'
+  )
+}
+
+// Type guard for checking if user has role
+export function hasRole(user: unknown): user is SessionUser & { role: string } {
+  return isSessionUser(user) && typeof user.role === 'string'
+}
+
+// ============================================
+// Doctor Form Data Types
+// ============================================
+
+export interface DoctorPersonalFormData {
+  name: string
+  email: string
+  cpf: string
+  phone: string
+  birthDate?: string
+  graduationDate?: string
+  councilType: string
+  councilNumber: string
+  councilState?: string
+  companyName?: string
+  cnpj?: string
+  taxRegime?: TaxRegime
+}
+
+export interface DoctorBankFormData {
+  bankNumber?: string
+  bankName?: string
+  bankAgency?: string
+  bankAccount?: string
+  pixKeyType?: string
+  pixKey?: string
+}
+
+export interface DoctorScheduleFormData {
+  scheduleCode: string
+  scheduleName: string
+  sector: DoctorSector
+  patientsPerHour: number
+  hourlyRate: number
+  exceedBonus?: number
+  weekDays: number[]
+  startTime: string
+  endTime: string
+}
+
+export interface DoctorPaymentFormData {
+  paymentType: PaymentType
+  paymentClass: PaymentClass
+  monthlyFixedValue?: number
+}
+
+export interface CreateDoctorFormData {
+  personal: DoctorPersonalFormData
+  bank?: DoctorBankFormData
+  schedules?: DoctorScheduleFormData[]
+  payment?: DoctorPaymentFormData
+}
+
+// ============================================
+// Appointment Types
+// ============================================
+
+export interface CreateAppointmentData {
+  doctorId: string
+  scheduleCode: string
+  date: string
+  time: string
+  patientName: string
+  patientPhone?: string
+  patientEmail?: string
+  healthPlan?: string
+}
+
+export interface AppointmentWithDoctor extends PrismaAppointment {
+  doctor: Pick<PrismaDoctor, 'id' | 'name' | 'councilType' | 'councilNumber'>
+}
+
+export interface AppointmentStatistics {
+  scheduled: number
+  confirmed: number
+  waiting: number
+  inProgress: number
+  completed: number
+  noShow: number
+}
+
+// ============================================
+// Production Types
+// ============================================
+
+export interface ProductionWithDoctor extends PrismaProduction {
+  doctor: Pick<PrismaDoctor, 'id' | 'name'>
+}
+
+export interface ProductionSummary {
+  totalHours: number
+  totalPatients: number
+  totalValue: number
+}
+
+export interface ProductionsByDoctor {
+  doctor: Pick<PrismaDoctor, 'id' | 'name'>
+  productions: PrismaProduction[]
+  totalHours: number
+  totalPatients: number
+  totalValue: number
+}
+
+// ============================================
+// API Response Types
+// ============================================
+
+export interface PaginationMeta {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+}
+
+export interface PaginatedResponse<T> {
+  data: T[]
+  pagination: PaginationMeta
+}
+
+export interface ApiError {
+  error: string
+  details?: Record<string, string[]>
+}
+
+// ============================================
+// Where Input Types (for API queries)
+// ============================================
+
+export type DoctorWhereInput = Prisma.DoctorWhereInput
+export type AppointmentWhereInput = Prisma.AppointmentWhereInput
+export type ProductionWhereInput = Prisma.ProductionWhereInput
+export type UserWhereInput = Prisma.UserWhereInput
+
+// ============================================
+// Original Types
+// ============================================
 
 export interface Tool {
   id: string
@@ -39,6 +212,18 @@ export interface Role {
   description?: string | null
   level: number
 }
+
+// ============================================
+// Constants
+// ============================================
+
+export const ADMIN_ROLES = ['Diretoria', 'Diretoria Médica', 'Administrador'] as const
+export const MEDICAL_ROLES = ['Médico', 'Médico Convidado'] as const
+export const MANAGER_ROLES = ['Coordenador', 'Supervisor'] as const
+
+export type AdminRole = typeof ADMIN_ROLES[number]
+export type MedicalRole = typeof MEDICAL_ROLES[number]
+export type ManagerRole = typeof MANAGER_ROLES[number]
 
 export const AVAILABLE_TOOLS: Tool[] = [
   {
@@ -119,3 +304,50 @@ export const AVAILABLE_TOOLS: Tool[] = [
     requiredRoles: ['Diretoria', 'Diretoria Médica', 'Administrador'],
   },
 ]
+
+// ============================================
+// Utility Functions
+// ============================================
+
+/**
+ * Converte campos Decimal do Prisma para Number
+ * Usado para serializar dados do Prisma para JSON
+ */
+export function convertDecimalFields<T extends Record<string, unknown>>(obj: T): T {
+  if (!obj || typeof obj !== 'object') return obj
+
+  const result = { ...obj }
+  Object.keys(result).forEach((key) => {
+    const value = result[key]
+    if (value && typeof value === 'object' && 'toNumber' in value) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(result as any)[key] = (value as { toNumber: () => number }).toNumber()
+    } else if (Array.isArray(value)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(result as any)[key] = value.map((item) =>
+        typeof item === 'object' ? convertDecimalFields(item) : item
+      )
+    } else if (value && typeof value === 'object') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ;(result as any)[key] = convertDecimalFields(value as Record<string, unknown>)
+    }
+  })
+  return result
+}
+
+/**
+ * Valida e parseia uma data
+ * Retorna null se a data for inválida
+ */
+export function parseDate(dateString: string | null | undefined): Date | null {
+  if (!dateString) return null
+  const date = new Date(dateString)
+  return isNaN(date.getTime()) ? null : date
+}
+
+/**
+ * Verifica se um usuário tem role de admin
+ */
+export function isAdminRole(role: string | undefined): role is AdminRole {
+  return ADMIN_ROLES.includes(role as AdminRole)
+}
