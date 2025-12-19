@@ -14,12 +14,13 @@ import {
 } from '@/components/ui/table'
 import { Download, Calculator, FileSpreadsheet } from 'lucide-react'
 import { toast } from 'sonner'
+import { ProductionWithDoctor, ProductionSummary, ProductionsByDoctor } from '@/lib/types'
 
 export default function ProductionDashboard() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
-  const [productions, setProductions] = useState<any[]>([])
-  const [summary, setSummary] = useState({
+  const [productions, setProductions] = useState<ProductionWithDoctor[]>([])
+  const [summary, setSummary] = useState<ProductionSummary>({
     totalHours: 0,
     totalPatients: 0,
     totalValue: 0
@@ -38,8 +39,8 @@ export default function ProductionDashboard() {
         `/api/ambulatorio/production?month=${selectedMonth}&year=${selectedYear}`
       )
       const data = await response.json()
-      setProductions(data.productions || [])
-      setSummary(data.summary || { totalHours: 0, totalPatients: 0, totalValue: 0 })
+      setProductions(data.productions ?? [])
+      setSummary(data.summary ?? { totalHours: 0, totalPatients: 0, totalValue: 0 })
     } catch (error) {
       toast.error('Erro ao carregar produções')
     } finally {
@@ -110,7 +111,7 @@ export default function ProductionDashboard() {
     acc[prod.doctorId].totalPatients += prod.attendedPatients
     acc[prod.doctorId].totalValue += prod.totalValue
     return acc
-  }, {} as any)
+  }, {} as Record<string, ProductionsByDoctor>)
 
   return (
     <div className="space-y-6">
@@ -240,7 +241,7 @@ export default function ProductionDashboard() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {Object.values(productionsByDoctor).map((item: any) => (
+                {Object.values(productionsByDoctor).map((item) => (
                   <TableRow key={item.doctor.id}>
                     <TableCell className="font-medium">{item.doctor.name}</TableCell>
                     <TableCell className="text-center">{item.totalHours.toFixed(1)}h</TableCell>

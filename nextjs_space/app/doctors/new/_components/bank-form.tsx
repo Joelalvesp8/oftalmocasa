@@ -4,14 +4,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { DoctorBankFormData } from '@/lib/types'
 
 interface BankFormProps {
-  data: any
-  onChange: (data: any) => void
+  data: DoctorBankFormData
+  onChange: (data: DoctorBankFormData) => void
 }
 
 export default function DoctorBankForm({ data, onChange }: BankFormProps) {
-  const handleChange = (field: string, value: any) => {
+  const handleChange = <K extends keyof DoctorBankFormData>(
+    field: K,
+    value: DoctorBankFormData[K]
+  ) => {
     onChange({ ...data, [field]: value })
   }
 

@@ -9,16 +9,20 @@ import { Button } from '@/components/ui/button'
 import { Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { TaxRegime } from '@prisma/client'
+import { DoctorPersonalFormData } from '@/lib/types'
 
 interface PersonalFormProps {
-  data: any
-  onChange: (data: any) => void
+  data: DoctorPersonalFormData
+  onChange: (data: DoctorPersonalFormData) => void
 }
 
 export default function DoctorPersonalForm({ data, onChange }: PersonalFormProps) {
   const [searchingCnpj, setSearchingCnpj] = useState(false)
 
-  const handleChange = (field: string, value: any) => {
+  const handleChange = <K extends keyof DoctorPersonalFormData>(
+    field: K,
+    value: DoctorPersonalFormData[K]
+  ) => {
     onChange({ ...data, [field]: value })
   }
 

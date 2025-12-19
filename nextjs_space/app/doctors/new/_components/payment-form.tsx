@@ -6,11 +6,12 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { InfoIcon } from 'lucide-react'
+import { DoctorPaymentFormData, DoctorScheduleFormData } from '@/lib/types'
 
 interface PaymentFormProps {
-  data: any
-  schedules: any[]
-  onChange: (data: any) => void
+  data: DoctorPaymentFormData
+  schedules: DoctorScheduleFormData[]
+  onChange: (data: DoctorPaymentFormData) => void
 }
 
 const PAYMENT_CLASSES = [
@@ -22,7 +23,10 @@ const PAYMENT_CLASSES = [
 ]
 
 export default function DoctorPaymentForm({ data, schedules, onChange }: PaymentFormProps) {
-  const handleChange = (field: string, value: any) => {
+  const handleChange = <K extends keyof DoctorPaymentFormData>(
+    field: K,
+    value: DoctorPaymentFormData[K]
+  ) => {
     onChange({ ...data, [field]: value })
   }
 

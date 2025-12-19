@@ -5,7 +5,7 @@ import { authOptions } from '@/lib/auth-options'
 import { prisma } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import { createUserSchema } from '@/lib/validations'
-import { isAdmin } from '@/lib/rbac'
+import { hasRole, isAdminRole } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,8 +18,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
-    const userRole = (session.user as any).role ?? ''
-    if (!isAdmin(userRole)) {
+    if (!hasRole(session.user) || !isAdminRole(session.user.role)) {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
     }
 
@@ -58,8 +57,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
-    const userRole = (session.user as any).role ?? ''
-    if (!isAdmin(userRole)) {
+    if (!hasRole(session.user) || !isAdminRole(session.user.role)) {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
     }
 
