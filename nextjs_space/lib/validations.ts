@@ -229,6 +229,30 @@ export const updateProductionSchema = z.object({
   exceededPatients: z.number().int().nonnegative('Pacientes excedentes deve ser não-negativo').optional(),
 })
 
+// Schemas de Aprovação/Contestação pelo Médico
+export const approveProductionSchema = z.object({
+  confirm: z.literal(true, {
+    errorMap: () => ({ message: 'Confirmação obrigatória para aprovar produção' }),
+  }),
+})
+
+export const contestProductionSchema = z.object({
+  reason: z
+    .string()
+    .min(10, 'Motivo da contestação deve ter no mínimo 10 caracteres')
+    .max(500, 'Motivo muito longo (máximo 500 caracteres)'),
+})
+
+export const resolveContestSchema = z.object({
+  resolution: z
+    .string()
+    .min(10, 'Resolução deve ter no mínimo 10 caracteres')
+    .max(500, 'Resolução muito longa (máximo 500 caracteres)'),
+  action: z.enum(['accept_contest', 'reject_contest'], {
+    errorMap: () => ({ message: 'Ação deve ser "accept_contest" ou "reject_contest"' }),
+  }),
+})
+
 // ============================================
 // Report Schemas
 // ============================================
@@ -306,6 +330,9 @@ export type UpdateAppointmentInput = z.infer<typeof updateAppointmentSchema>
 export type CreateProductionInput = z.infer<typeof createProductionSchema>
 export type UpdateProductionInput = z.infer<typeof updateProductionSchema>
 export type CalculateProductionInput = z.infer<typeof calculateProductionSchema>
+export type ApproveProductionInput = z.infer<typeof approveProductionSchema>
+export type ContestProductionInput = z.infer<typeof contestProductionSchema>
+export type ResolveContestInput = z.infer<typeof resolveContestSchema>
 
 export type ApproveDoctorInput = z.infer<typeof approveDoctorSchema>
 export type RegisterDoctorInput = z.infer<typeof registerDoctorSchema>

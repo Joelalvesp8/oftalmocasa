@@ -212,36 +212,46 @@ model Production {
   id              String         @id @default(cuid())
   doctorId        String
   doctor          Doctor         @relation(fields: [doctorId], references: [id], onDelete: Cascade)
-  
+
   date            DateTime
   scheduleCode    String         // Tipo de agenda
   scheduleName    String
-  
+
   // Dados da produção
   scheduledHours  Float          // Horas agendadas
   workedHours     Float          // Horas trabalhadas
-  
+
   scheduledPatients Int          // Pacientes agendados
   attendedPatients  Int          // Pacientes atendidos
   exceededPatients  Int          // Pacientes excedentes
-  
+
   // Cálculos
   hourlyRate      Float          // Taxa horária
   baseValue       Float          // Valor base (horas x taxa)
   exceedValue     Float          // Valor excedente
   totalValue      Float          // Total
-  
+
   status          ProductionStatus @default(PENDING)
-  
+
+  // Aprovação pelo Médico (NOVO)
+  doctorApprovalStatus ProductionDoctorApprovalStatus @default(PENDING_DOCTOR_APPROVAL)
+  doctorApprovedAt     DateTime?
+  contestReason        String?     // Motivo da contestação pelo médico
+  contestedAt          DateTime?
+  contestResolvedAt    DateTime?   // Quando a contestação foi resolvida
+  contestResolvedBy    String?     // ID do admin que resolveu
+  contestResolution    String?     // Resposta do admin à contestação
+
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
-  
+
   paymentReport   PaymentReport? @relation(fields: [paymentReportId], references: [id])
   paymentReportId String?
-  
+
   @@unique([doctorId, date, scheduleCode])
   @@index([doctorId, date])
   @@index([status])
+  @@index([doctorApprovalStatus])
 }
 
 model PaymentReport {
@@ -382,6 +392,13 @@ enum ProductionStatus {
   REVIEWED
   APPROVED
   PAID
+}
+
+enum ProductionDoctorApprovalStatus {
+  PENDING_DOCTOR_APPROVAL  // Aguardando aprovação do médico
+  APPROVED_BY_DOCTOR       // Aprovado pelo médico (pode subir NF)
+  CONTESTED                // Contestado pelo médico
+  CONTEST_RESOLVED         // Contestação resolvida pelo admin
 }
 
 enum ReportStatus {
