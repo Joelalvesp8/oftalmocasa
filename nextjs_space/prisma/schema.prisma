@@ -409,3 +409,173 @@ enum DoctorStatus {
   REJECTED          // Rejeitado
   INCOMPLETE        // Documentação incompleta
 }
+
+// ============================================
+// Sistema de Notas Fiscais
+// ============================================
+
+model Invoice {
+  id                String            @id @default(cuid())
+
+  // Identificação da Nota
+  number            String            // Número da nota
+  series            String?           // Série da nota
+  accessKey         String?           @unique // Chave de acesso (44 dígitos)
+  invoiceType       InvoiceType       // PRODUTO ou SERVICO
+
+  // Fornecedor/Prestador
+  supplierCnpj      String
+  supplierName      String
+  supplierIe        String?           // Inscrição Estadual
+  supplierAddress   String?
+
+  // Datas
+  emissionDate      DateTime
+  entryDate         DateTime          @default(now()) // Data de entrada no sistema
+  competenceDate    DateTime          // Data de competência (normalmente = emissionDate)
+
+  // Valores
+  subtotal          Float             // Valor dos produtos/serviços
+  discountValue     Float             @default(0)
+  taxValue          Float             @default(0) // ICMS, ISS, etc
+  freightValue      Float             @default(0)
+  insuranceValue    Float             @default(0)
+  otherExpenses     Float             @default(0)
+  totalValue        Float             // Valor total da nota
+
+  // Status e Controle
+  status            InvoiceStatus     @default(PENDING)
+
+  // Armazenamento do XML
+  xmlPath           String?           // Caminho no S3
+  xmlFileName       String?
+  pdfPath           String?           // PDF da DANFE
+
+  // Observações
+  notes             String?
+
+  // Relacionamentos
+  items             InvoiceItem[]
+  payments          InvoicePayment[]
+
+  // Usuário que fez o upload
+  uploadedBy        String?
+
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([supplierCnpj])
+  @@index([invoiceType])
+  @@index([status])
+  @@index([emissionDate])
+  @@index([competenceDate])
+  @@index([entryDate])
+}
+
+model InvoiceItem {
+  id                String            @id @default(cuid())
+  invoiceId         String
+  invoice           Invoice           @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  // Informações do item
+  code              String?           // Código do produto/serviço
+  description       String
+  ncm               String?           // NCM (Nomenclatura Comum do Mercosul)
+  cfop              String?           // Código Fiscal de Operações
+  unit              String?           // Unidade (UN, KG, etc)
+
+  // Quantidades e Valores
+  quantity          Float
+  unitValue         Float
+  totalValue        Float
+  discountValue     Float             @default(0)
+
+  // Impostos
+  icmsValue         Float             @default(0)
+  ipiValue          Float             @default(0)
+  pisValue          Float             @default(0)
+  cofinsValue       Float             @default(0)
+  issValue          Float             @default(0)
+
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([invoiceId])
+}
+
+model InvoicePayment {
+  id                String            @id @default(cuid())
+  invoiceId         String
+  invoice           Invoice           @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  // Forma de Pagamento
+  paymentMethod     PaymentMethod     // A_VISTA, FATURADO, CARTAO, etc
+  installmentNumber Int               @default(1) // Número da parcela
+  totalInstallments Int               @default(1) // Total de parcelas
+
+  // Valores
+  amount            Float             // Valor desta parcela/pagamento
+
+  // Datas
+  dueDate           DateTime?         // Data de vencimento (para faturado)
+  paymentDate       DateTime?         // Data efetiva do pagamento (CAIXA)
+  competenceDate    DateTime          // Data de competência
+
+  // Status
+  status            PaymentStatus     @default(PENDING)
+
+  // Informações bancárias (se aplicável)
+  bankAccount       String?
+  checkNumber       String?
+  transactionId     String?
+
+  // Observações
+  notes             String?
+
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@index([invoiceId])
+  @@index([paymentMethod])
+  @@index([status])
+  @@index([dueDate])
+  @@index([paymentDate])
+  @@index([competenceDate])
+}
+
+// ============================================
+// Enums para Notas Fiscais
+// ============================================
+
+enum InvoiceType {
+  PRODUTO   // NF-e (Nota Fiscal Eletrônica de Produto)
+  SERVICO   // NFS-e (Nota Fiscal de Serviço Eletrônica)
+}
+
+enum InvoiceStatus {
+  PENDING           // Aguardando processamento
+  PROCESSED         // Processada
+  APPROVED          // Aprovada
+  REJECTED          // Rejeitada
+  CANCELLED         // Cancelada
+}
+
+enum PaymentMethod {
+  A_VISTA           // À vista
+  FATURADO          // Faturado (a prazo)
+  CARTAO_CREDITO    // Cartão de crédito
+  CARTAO_DEBITO     // Cartão de débito
+  BOLETO            // Boleto bancário
+  PIX               // PIX
+  TRANSFERENCIA     // Transferência bancária
+  CHEQUE            // Cheque
+  OUTROS            // Outros
+}
+
+enum PaymentStatus {
+  PENDING           // Pendente de pagamento
+  PAID              // Pago
+  OVERDUE           // Vencido
+  CANCELLED         // Cancelado
+  PARTIAL           // Parcialmente pago
+}

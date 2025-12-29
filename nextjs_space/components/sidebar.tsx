@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { LayoutDashboard, Users, User, X } from 'lucide-react'
+import { LayoutDashboard, Users, User, X, FileText } from 'lucide-react'
 import { isAdmin } from '@/lib/rbac'
 
 interface SidebarProps {
@@ -32,6 +32,12 @@ const NAV_ITEMS: NavItem[] = [
     title: 'Gestão de Usuários',
     href: '/admin',
     icon: Users,
+    adminOnly: true,
+  },
+  {
+    title: 'Notas Fiscais',
+    href: '/invoices',
+    icon: FileText,
     adminOnly: true,
   },
   {
