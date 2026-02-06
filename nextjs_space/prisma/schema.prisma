@@ -168,6 +168,7 @@ model Doctor {
   productions       Production[]
   paymentReports    PaymentReport[]
   documents         DoctorDocument[]
+  invoices          Invoice[]
   
   isActive          Boolean           @default(true)
   createdAt         DateTime          @default(now())
@@ -247,6 +248,9 @@ model Production {
 
   paymentReport   PaymentReport? @relation(fields: [paymentReportId], references: [id])
   paymentReportId String?
+
+  // Nota Fiscal (apenas se aprovado pelo médico)
+  invoice         Invoice?
 
   @@unique([doctorId, date, scheduleCode])
   @@index([doctorId, date])
@@ -358,6 +362,55 @@ model DoctorDocument {
   @@index([type])
 }
 
+model Invoice {
+  id                String         @id @default(cuid())
+
+  // Relacionamentos
+  productionId      String         @unique // Uma produção pode ter UMA nota fiscal
+  production        Production     @relation(fields: [productionId], references: [id], onDelete: Cascade)
+
+  doctorId          String
+  doctor            Doctor         @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+
+  // Arquivo da NF
+  fileName          String         // Nome original do arquivo
+  cloudStoragePath  String         // Caminho no S3
+  fileSize          Int            // Tamanho em bytes
+  mimeType          String         // application/pdf, image/jpeg, etc
+
+  // Dados extraídos via OCR
+  invoiceNumber     String?        // Número da NF extraído
+  issueDate         DateTime?      // Data de emissão extraída
+  totalValue        Float?         // Valor total extraído
+  cnpj              String?        // CNPJ extraído da NF
+
+  // Validação
+  ocrStatus         InvoiceOCRStatus @default(PENDING) // Status do processamento OCR
+  ocrProcessedAt    DateTime?      // Quando foi processado
+  ocrErrorMessage   String?        // Mensagem de erro caso OCR falhe
+
+  // Validação cruzada
+  cnpjMatches       Boolean?       // CNPJ da NF confere com CNPJ do médico
+  valueMatches      Boolean?       // Valor da NF confere com valor da produção (± 5%)
+  validationStatus  InvoiceValidationStatus @default(PENDING_VALIDATION)
+  validationNotes   String?        // Notas sobre validação
+
+  // Aprovação
+  approvedBy        String?        // ID do admin que aprovou
+  approvedAt        DateTime?
+  rejectedReason    String?        // Motivo da rejeição
+
+  // Controle
+  uploadedBy        String         // ID do médico que fez upload
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@index([productionId])
+  @@index([doctorId])
+  @@index([ocrStatus])
+  @@index([validationStatus])
+}
+
 // ============================================
 // Enums
 // ============================================
@@ -425,4 +478,22 @@ enum DoctorStatus {
   APPROVED          // Aprovado
   REJECTED          // Rejeitado
   INCOMPLETE        // Documentação incompleta
+}
+
+enum InvoiceOCRStatus {
+  PENDING           // Aguardando processamento OCR
+  PROCESSING        // Processando OCR
+  COMPLETED         // OCR concluído com sucesso
+  FAILED            // Falha no processamento OCR
+  MANUAL_REVIEW     // Necessita revisão manual
+}
+
+enum InvoiceValidationStatus {
+  PENDING_VALIDATION    // Aguardando validação
+  VALID                 // Validação OK (CNPJ e valor conferem)
+  CNPJ_MISMATCH        // CNPJ não confere
+  VALUE_MISMATCH       // Valor não confere
+  MANUAL_VALIDATION    // Necessita validação manual
+  APPROVED             // Aprovado pelo admin
+  REJECTED             // Rejeitado pelo admin
 }

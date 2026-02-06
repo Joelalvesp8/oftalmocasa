@@ -270,6 +270,39 @@ export const exportPaymentReportSchema = z.object({
 })
 
 // ============================================
+// Invoice (Nota Fiscal) Schemas
+// ============================================
+
+export const uploadInvoiceSchema = z.object({
+  productionId: z.string().uuid('ID da produção inválido'),
+  file: z.object({
+    name: z.string().min(1, 'Nome do arquivo é obrigatório'),
+    size: z.number().positive('Tamanho do arquivo inválido').max(10485760, 'Arquivo muito grande (máximo 10MB)'),
+    type: z.string().refine(
+      (type) => ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'].includes(type),
+      { message: 'Tipo de arquivo inválido. Permitido: PDF, JPEG, PNG' }
+    ),
+  }),
+})
+
+export const manualInvoiceDataSchema = z.object({
+  invoiceNumber: z.string().min(1, 'Número da NF é obrigatório'),
+  issueDate: z.string().refine((val) => !isNaN(Date.parse(val)), {
+    message: 'Data de emissão inválida',
+  }),
+  totalValue: z.number().positive('Valor deve ser positivo'),
+  cnpj: z.string().regex(/^\d{14}$/, 'CNPJ deve ter 14 dígitos'),
+})
+
+export const approveInvoiceSchema = z.object({
+  notes: z.string().optional(),
+})
+
+export const rejectInvoiceSchema = z.object({
+  reason: z.string().min(10, 'Motivo da rejeição deve ter no mínimo 10 caracteres'),
+})
+
+// ============================================
 // Query Parameter Schemas
 // ============================================
 
@@ -339,6 +372,11 @@ export type RegisterDoctorInput = z.infer<typeof registerDoctorSchema>
 
 export type GeneratePaymentReportInput = z.infer<typeof generatePaymentReportSchema>
 export type ExportPaymentReportInput = z.infer<typeof exportPaymentReportSchema>
+
+export type UploadInvoiceInput = z.infer<typeof uploadInvoiceSchema>
+export type ManualInvoiceDataInput = z.infer<typeof manualInvoiceDataSchema>
+export type ApproveInvoiceInput = z.infer<typeof approveInvoiceSchema>
+export type RejectInvoiceInput = z.infer<typeof rejectInvoiceSchema>
 
 export type PaginationInput = z.infer<typeof paginationSchema>
 export type DoctorQueryInput = z.infer<typeof doctorQuerySchema>
