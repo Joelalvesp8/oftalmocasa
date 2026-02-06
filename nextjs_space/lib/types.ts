@@ -351,3 +351,125 @@ export function parseDate(dateString: string | null | undefined): Date | null {
 export function isAdminRole(role: string | undefined): role is AdminRole {
   return ADMIN_ROLES.includes(role as AdminRole)
 }
+
+// ============================================
+// CNPJ & Receita Federal Types
+// ============================================
+
+/**
+ * Resposta da BrasilAPI para consulta de CNPJ
+ * Fonte: https://brasilapi.com.br/docs#tag/CNPJ
+ */
+export interface BrasilAPICNPJResponse {
+  cnpj: string
+  razao_social: string
+  nome_fantasia: string
+  cnae_fiscal: number
+  cnae_fiscal_descricao: string
+  data_inicio_atividade: string
+  natureza_juridica: string
+  logradouro: string
+  numero: string
+  complemento: string
+  bairro: string
+  municipio: string
+  uf: string
+  cep: string
+  ddd_telefone_1: string
+  ddd_telefone_2: string
+  email: string
+  opcao_pelo_simples: boolean | string | null
+  opcao_pelo_mei: boolean | string | null
+  porte: string
+  situacao_cadastral: string
+  descricao_situacao_cadastral: string
+  data_situacao_cadastral: string
+  motivo_situacao_cadastral: string
+  descricao_tipo_logradouro: string
+  qsa?: Array<{
+    identificador_de_socio: number
+    nome_socio: string
+    cnpj_cpf_do_socio: string
+    codigo_qualificacao_socio: number
+    qualificacao_socio: string
+    percentual_capital_social: number
+    data_entrada_sociedade: string
+    cpf_representante_legal: string
+    nome_representante_legal: string
+    codigo_qualificacao_representante_legal: number
+    qualificacao_representante_legal: string
+    pais_socio: string
+  }>
+}
+
+/**
+ * Dados mapeados de CNPJ para o sistema
+ */
+export interface CNPJData {
+  cnpj: string
+  companyName: string // razao_social
+  fantasyName: string // nome_fantasia
+  taxRegime: 'SN' | 'LP' | 'LR' | 'MEI' | null // Simples Nacional, Lucro Presumido, Lucro Real, MEI
+  address: {
+    street: string
+    number: string
+    complement: string
+    neighborhood: string
+    city: string
+    state: string
+    zipCode: string
+  }
+  legalNature: string
+  openingDate: string
+  mainActivity: string
+  status: string
+  phone1: string
+  phone2: string
+  email: string
+  size: string // porte
+  partners: Array<{
+    name: string
+    cpfCnpj: string
+    qualification: string
+    country: string
+    capitalPercentage: number
+  }>
+}
+
+/**
+ * Cache entry para consultas CNPJ
+ */
+export interface CNPJCacheEntry {
+  data: CNPJData
+  cachedAt: Date
+  expiresAt: Date
+}
+
+/**
+ * Tipo para regime tributário do sistema
+ */
+export type SystemTaxRegime = 'SN' | 'LP' | 'LR' | 'MEI'
+
+/**
+ * Valida formato de CNPJ (apenas dígitos)
+ */
+export function isValidCNPJFormat(cnpj: string): boolean {
+  const cleaned = cnpj.replace(/\D/g, '')
+  return cleaned.length === 14 && /^\d+$/.test(cleaned)
+}
+
+/**
+ * Formata CNPJ para exibição: 12.345.678/0001-90
+ */
+export function formatCNPJ(cnpj: string): string {
+  const cleaned = cnpj.replace(/\D/g, '')
+  if (cleaned.length !== 14) return cnpj
+  return cleaned.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')
+}
+
+/**
+ * Limpa CNPJ removendo formatação
+ */
+export function cleanCNPJ(cnpj: string): string {
+  return cnpj.replace(/\D/g, '')
+}

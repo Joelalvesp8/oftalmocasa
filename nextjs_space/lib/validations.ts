@@ -303,6 +303,22 @@ export const rejectInvoiceSchema = z.object({
 })
 
 // ============================================
+// CNPJ Consultation Schemas
+// ============================================
+
+export const cnpjQuerySchema = z.object({
+  cnpj: z
+    .string()
+    .min(14, 'CNPJ deve conter 14 dígitos')
+    .regex(/^\d{14}$/, 'CNPJ deve conter apenas números (14 dígitos)'),
+})
+
+export const cnpjCacheConfigSchema = z.object({
+  ttl: z.number().int().positive().default(86400), // 24 hours default cache
+  forceRefresh: z.boolean().default(false),
+})
+
+// ============================================
 // Query Parameter Schemas
 // ============================================
 
@@ -382,3 +398,6 @@ export type PaginationInput = z.infer<typeof paginationSchema>
 export type DoctorQueryInput = z.infer<typeof doctorQuerySchema>
 export type AppointmentQueryInput = z.infer<typeof appointmentQuerySchema>
 export type ProductionQueryInput = z.infer<typeof productionQuerySchema>
+
+export type CNPJQueryInput = z.infer<typeof cnpjQuerySchema>
+export type CNPJCacheConfigInput = z.infer<typeof cnpjCacheConfigSchema>
